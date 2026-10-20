@@ -1,0 +1,19 @@
+# ---- 依赖（体积大头，克隆后跑 scripts\01_setup_infra.bat 自动重装）----
+node_modules/
+infra/node_modules/
+web/lib/node_modules/
+
+# ---- 运行时产物 ----
+infra/logs/
+release/
+*.log
+
+# ---- 打包产物：610MB，且两个文件超 GitHub 单文件 100MB 硬限制 ----
+# 不要放进仓库，改用 GitHub Releases 附带（Release 单文件上限 2GB）
+../Packaged/
+*.zip
+
+# ---- 系统杂项 ----
+Thumbs.db
+desktop.ini
+.DS_Store

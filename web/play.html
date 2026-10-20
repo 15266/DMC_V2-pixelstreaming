@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DMC_V2 · 鬼侍斩击 — 在线游玩</title>
+<style>
+  :root{
+    --bg:#0a0b0e; --bg2:#12141a; --line:#242833;
+    --fg:#e8eaf0; --fg2:#9aa1b1; --accent:#c8342f; --accent2:#e8564f;
+    --ok:#3fbf7f; --warn:#e0a63c;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    overflow:hidden;-webkit-font-smoothing:antialiased}
+  #player{position:fixed;inset:0;width:100%;height:100%;background:#000;z-index:1}
+  #player video{width:100%!important;height:100%!important;object-fit:contain;background:#000}
+
+  .hud{position:fixed;z-index:10;pointer-events:none}
+
+  #top{top:0;left:0;right:0;padding:14px 18px;display:flex;align-items:center;gap:14px;
+    background:linear-gradient(180deg,rgba(10,11,14,.85),rgba(10,11,14,0))}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand b{font-size:19px;letter-spacing:.14em;font-weight:700}
+  .brand span{font-size:12px;color:var(--fg2);letter-spacing:.22em}
+  .spacer{flex:1}
+
+  .stat{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--fg2);
+    background:rgba(18,20,26,.72);border:1px solid var(--line);
+    padding:6px 11px;border-radius:999px;backdrop-filter:blur(8px)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg2);transition:background .3s}
+  .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.err{background:var(--accent2);box-shadow:0 0 8px var(--accent2)}
+  .dot.wait{background:var(--warn);box-shadow:0 0 8px var(--warn);animation:pulse 1.3s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  #overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(120% 90% at 50% 0%,#1a0e10 0%,#0a0b0e 60%);padding:24px}
+  #overlay.hidden{display:none}
+  .card{width:min(560px,100%);text-align:center}
+  .glyph{font-size:56px;line-height:1;margin-bottom:18px;filter:drop-shadow(0 4px 18px rgba(200,52,47,.45))}
+  .card h1{font-size:30px;letter-spacing:.2em;margin-bottom:8px;font-weight:700}
+  .card h2{font-size:13px;letter-spacing:.34em;color:var(--accent2);margin-bottom:26px;font-weight:500}
+  .card p{font-size:14px;line-height:1.85;color:var(--fg2);margin-bottom:22px}
+  .card p kbd{display:inline-block;padding:1px 7px;border:1px solid var(--line);
+    border-radius:5px;background:var(--bg2);color:var(--fg);font-size:12px;font-family:inherit}
+  .btn{pointer-events:auto;display:inline-block;border:0;cursor:pointer;
+    background:var(--accent);color:#fff;font-size:15px;font-weight:600;letter-spacing:.14em;
+    padding:15px 46px;border-radius:8px;transition:background .2s,transform .1s}
+  .btn:hover{background:var(--accent2)}
+  .btn:active{transform:translateY(1px)}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .hint{margin-top:20px;font-size:12px;color:#5f6675;line-height:1.9}
+  .errbox{margin-top:18px;font-size:12.5px;color:var(--accent2);line-height:1.8;
+    background:rgba(200,52,47,.09);border:1px solid rgba(200,52,47,.3);
+    border-radius:8px;padding:12px 14px;text-align:left;display:none;white-space:pre-wrap}
+
+  #tools{right:16px;bottom:16px;display:flex;gap:9px;pointer-events:auto}
+  .tool{pointer-events:auto;cursor:pointer;user-select:none;font-size:12px;color:var(--fg2);
+    background:rgba(18,20,26,.78);border:1px solid var(--line);border-radius:8px;
+    padding:8px 13px;transition:color .2s,border-color .2s;backdrop-filter:blur(8px)}
+  .tool:hover{color:var(--fg);border-color:#3a4152}
+  #fsnote{left:16px;bottom:16px;font-size:11.5px;color:#5f6675}
+</style>
+</head>
+<body>
+
+<div id="player"></div>
+
+<div class="hud" id="top">
+  <div class="brand"><b>DMC_V2</b><span>鬼侍 · 斩击</span></div>
+  <div class="spacer"></div>
+  <div class="stat"><i class="dot" id="d0"></i><span id="s0">未连接</span></div>
+</div>
+
+<div class="hud" id="tools">
+  <div class="tool" id="btn-fs">全屏</div>
+  <div class="tool" id="btn-rc">重连</div>
+  <div class="tool" id="btn-mute">静音</div>
+</div>
+<div class="hud" id="fsnote">浏览器直接游玩 · 画面由云端 GPU 实时串流</div>
+
+<div id="overlay">
+  <div class="card">
+    <div class="glyph">&#10070;</div>
+    <h1>鬼侍 · 斩击</h1>
+    <h2>DMC_V2 ONLINE</h2>
+    <p>
+      画面由云端 Windows GPU 主机实时串流，你的键盘、鼠标操作会即时回传到主机。<br>
+      进入后点击画面即可锁定鼠标，按 <kbd>Esc</kbd> 释放。
+    </p>
+    <button class="btn" id="btn-play">进 入 游 戏</button>
+    <div class="hint">建议使用桌面浏览器与有线网络；移动端可游玩但建议横屏。</div>
+    <div class="errbox" id="err"></div>
+  </div>
+</div>
+
+<script src="./lib/frontend.js"></script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var overlay=$('overlay'), errbox=$('err'), playBtn=$('btn-play');
+  var dot=$('d0'), st=$('s0');
+
+  function showErr(m){ errbox.style.display='block'; errbox.textContent = m; }
+  var baseState = '未连接';
+  function setState(cls, text){ dot.className='dot '+(cls||''); baseState=text; st.textContent=text; }
+
+  if(!window.pixelstreaming || !window.pixelstreaming.PixelStreaming || !window.pixelstreaming.Config){
+    showErr('前端库未加载：缺少 web/lib/frontend.js。');
+    playBtn.disabled = true;
+    return;
+  }
+
+  // 信令地址：默认与本页面同源同端口（8080），可用 ?ws=ws://host:port 覆盖
+  var params = new URLSearchParams(location.search);
+  var scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  var wsUrl = params.get('ws')
+    || (scheme + '://' + (location.host || location.hostname + ':8080'));
+
+  var ps = null;
+
+  function start(){
+    if(ps) { try{ ps.reconnect(); }catch(e){} return; }
+
+    var config = new window.pixelstreaming.Config({
+      initialSettings: {
+        ss: wsUrl,
+        AutoConnect: true,
+        AutoPlayVideo: true,
+        StartVideoMuted: false,
+        WaitForStreamer: true,
+        HoveringMouse: false,
+        MatchViewportRes: true,
+        KeyboardInput: true,
+        MouseInput: true,
+        TouchInput: true,
+        GamepadInput: true
+      },
+      useUrlParams: false
+    });
+
+    ps = new window.pixelstreaming.PixelStreaming(config, { videoElementParent: $('player') });
+
+    ps.addEventListener('webRtcConnecting',    function(){ setState('wait','正在连接…'); });
+    ps.addEventListener('webRtcConnected',     function(){ setState('on','已连接 · 等待画面'); });
+    ps.addEventListener('webRtcDisconnected', function(){ setState('err','已断开'); });
+    ps.addEventListener('webRtcFailed',       function(){ setState('err','连接失败'); });
+    ps.addEventListener('videoInitialized',   function(){ setState('on','画面就绪'); });
+    ps.addEventListener('playStream',         function(){ setState('on','播放中'); });
+    ps.addEventListener('playStreamError',    function(e){ setState('err','播放失败'); showErr('播放失败：' + JSON.stringify(e.data||e)); });
+    ps.addEventListener('playStreamRejected', function(e){ showErr('浏览器拒绝了播放请求，请先点击画面。'); });
+
+    ps.addEventListener('statsReceived', function(e){
+      var s = e.data && e.data.aggregatedStats;
+      if(!s) return;
+      var parts = [];
+      if(s.inboundVideoStats && s.inboundVideoStats.framerate) parts.push(Math.round(s.inboundVideoStats.framerate)+' fps');
+      if(s.bitrate) parts.push(Math.round(s.bitrate/1000)+' Mbps');
+      if(s.inboundVideoStats && s.inboundVideoStats.packetsLost != null) parts.push('丢包 '+s.inboundVideoStats.packetsLost);
+      if(parts.length) setStat(parts.join(' · '));
+    });
+
+    ps.addEventListener('latencyCalculated', function(e){
+      var info = e.data && e.data.latencyInfo;
+      if(!info) return;
+      var ms = info.latencyMS != null ? info.latencyMS : info.latencyMs;
+      if(ms != null) setStat(Math.round(ms)+' ms');
+    });
+  }
+
+  function setStat(extra){
+    st.textContent = baseState + (extra ? ' · ' + extra : '');
+  }
+
+  playBtn.addEventListener('click', function(){
+    overlay.classList.add('hidden');
+    setState('wait','正在接入云端主机…');
+    try{ start(); }
+    catch(e){ setState('err','启动失败'); showErr('启动串流失败：' + (e && e.message ? e.message : e)); }
+  });
+
+  $('btn-fs').addEventListener('click', function(){
+    var el = document.documentElement;
+    if(!document.fullscreenElement){ if(el.requestFullscreen) el.requestFullscreen(); }
+    else { if(document.exitFullscreen) document.exitFullscreen(); }
+  });
+
+  $('btn-rc').addEventListener('click', function(){
+    try{ if(ps) ps.reconnect(); else start(); }catch(e){}
+  });
+
+  var muted=false;
+  $('btn-mute').addEventListener('click', function(){
+    muted=!muted;
+    var v = document.querySelector('#player video');
+    if(v) v.muted = muted;
+    this.textContent = muted ? '取消静音' : '静音';
+  });
+
+  document.addEventListener('fullscreenchange', function(){
+    $('btn-fs').textContent = document.fullscreenElement ? '退出全屏' : '全屏';
+  });
+})();
+</script>
+</body>
+</html>

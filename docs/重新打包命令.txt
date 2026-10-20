@@ -1,0 +1,125 @@
+============================================================
+ DMC_V2 - repackage for Pixel Streaming (UE 5.5, Win64)
+ Verified working 2026-10-20
+============================================================
+
+WHY A REBUILD IS NEEDED
+-----------------------
+The original package had no PixelStreaming2 plugin, so the streaming
+CLI flags were ignored and no browser could ever connect.
+
+HOW TO BUILD
+------------
+    scripts\06_repackage.bat
+
+That script runs exactly this (cmd.exe):
+
+    set UE=E:\UE_5.5
+    call "%UE%\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun ^
+         -project="E:\ue_test\mt\DMC_V2\DMC_V2.uproject" ^
+         -platform=Win64 ^
+         -clientconfig=Shipping ^
+         -cook -build -stage -pak -archive ^
+         -archivedirectory="E:\ue_test\mt\DMC_V2\Packaged" ^
+         -nodebuginfo -utf8output
+
+Use RunUAT.bat, NOT Build.bat. Build.bat does not accept
+-run=BuildCookRun.
+
+Measured on this machine: about 20 minutes wall clock
+(compile+link ~4 min, cook 2 min, stage 75 s, archive the rest).
+
+
+WHY Shipping AND NOT Development
+--------------------------------
+The game used to crash on startup with
+
+    ensure condition failed: PrecompiledData->FindDataID(this).IsValid()
+    No precompiled movie scene data is present for sequence 'Sequence'.
+    MovieSceneSequence.cpp:130
+
+That ensure lives inside a `#if DO_CHECK` block, and DO_CHECK is 0
+ONLY in Shipping (Debug/Development/Test all have DO_CHECK=1).
+Shipping therefore compiles the whole block out and the process
+survives. Details and the residual risk: see docs\崩溃修复报告.md.
+
+Trade-off you should know about: Shipping also disables UE's log
+file writer (bUseLoggingInShipping), so `-log` produces NO
+Saved\Logs\*.log. Diagnose via the signalling server console and
+`http://<host>:8080/api/status` instead.
+
+
+REQUIRED LOCAL WORKAROUND (already applied on this machine)
+------------------------------------------------------------
+%APPDATA%\Unreal Engine\UnrealBuildTool\BuildConfiguration.xml
+
+    <BuildConfiguration>
+      <bDeterministic>false</bDeterministic>
+      <bUsePCHFiles>false</bUsePCHFiles>
+      <bUseSharedPCHs>false</bUseSharedPCHs>
+    </BuildConfiguration>
+
+Without these three settings the Shipping build fails with:
+
+    fatal error C1056  : cannot update the timestamp field in '....obj'
+    CVTRES fatal error CVT1111 : cannot update the timestamp field, error 5
+    LINK   fatal error LNK1123 : conversion to COFF failed
+
+Shipping defaults bDeterministic to true, which adds
+/experimental:deterministic (cl) and /Brepro (link). The COFF
+timestamp rewrite those flags perform is being rejected with
+ERROR_ACCESS_DENIED (5) on this machine, so deterministic builds
+must be turned off. Original file is backed up at:
+E:\ue_test\mt\DMC_V2\_fix_backup\BuildConfiguration.xml.bak
+
+On a different machine you can probably delete this workaround and
+build with defaults.
+
+
+HOW TO VERIFY THE BUILD ACTUALLY HAS PIXEL STREAMING
+-----------------------------------------------------
+Shipping is a MONOLITHIC build: plugin modules are linked straight
+into DMC_V2-Win64-Shipping.exe, so there are NO
+PixelStreaming*.dll files. Do not look for DLLs.
+
+Check the staged plugin content instead:
+
+    dir "E:\ue_test\mt\DMC_V2\Packaged\Windows\DMC_V2\Samples\PixelStreaming2"
+
+Expected: a WebServers folder.
+
+Also present in the manifest after a good build:
+
+    Engine/Plugins/Media/PixelStreaming2/PixelStreaming2.uplugin
+    Engine/Plugins/Media/PixelStreaming2/Content/DefaultCursor.uasset
+    ...
+
+
+OUTPUT LAYOUT
+-------------
+    Packaged\Windows\DMC_V2.exe                           launcher
+    Packaged\Windows\DMC_V2\Binaries\Win64\
+        DMC_V2-Win64-Shipping.exe                         real game
+    Packaged\Windows\DMC_V2\Content\Paks\*.pak / *.ucas   cooked data
+
+
+SMOKE TEST (no browser needed)
+------------------------------
+1) start the signalling server
+       scripts\02_start_signalling.bat
+
+2) start the game in streaming mode
+       scripts\03_start_game.bat
+
+3) fake a player and confirm the pipeline is alive
+       cd PSDeploy\infra
+       node ..\scripts\test_player.mjs
+
+   Expected tail:
+       << streamerList ["DefaultStreamer"]
+       >> {"type":"subscribe","streamerId":"DefaultStreamer"}
+       << offer sdpLen=2965
+       PASS: 收到 offer
+
+4) real browser test
+       open http://127.0.0.1:8080/
