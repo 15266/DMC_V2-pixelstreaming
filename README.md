@@ -1,5 +1,8 @@
 # DMC_V2 在线游玩部署套件（像素流送 / Pixel Streaming）
 
+> 仓库：**https://github.com/15266/DMC_V2-pixelstreaming**
+> 游戏包（471 MiB）在 **Releases** 里，仓库只放代码与文档。
+
 本目录用于把 `DMC_V2` 这个 **UE 5.5 Windows 原生程序** 通过网页让别人实时游玩。
 信令与前端全部通过 npm（npmmirror 镜像）获取，**不需要访问 github.com**。
 
@@ -63,6 +66,7 @@ PSDeploy/
 │   ├── 04_start_all.bat         一键：信令 + 游戏
 │   ├── 06_repackage.bat         带 PixelStreaming2 重新打包游戏
 │   ├── 07_make_release_zip.bat  生成 Release 附件用的 610MB 压缩包
+│   ├── 08_publish_release.mjs   调 GitHub API 流式上传 Release 附件
 │   ├── test_player.mjs          假玩家：验证流送端能出流（不需要浏览器）
 │   ├── test_stun.mjs            单个 STUN 连通性探测
 │   └── test_nat.mjs             NAT 类型判定（对称 / 锥形）
