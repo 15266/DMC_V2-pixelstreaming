@@ -62,7 +62,10 @@ PSDeploy/
 │   ├── 03_start_game.bat        以像素流送模式启动 DMC_V2.exe
 │   ├── 04_start_all.bat         一键：信令 + 游戏
 │   ├── 06_repackage.bat         带 PixelStreaming2 重新打包游戏
-│   └── test_player.mjs          假玩家：验证流送端能出流（不需要浏览器）
+│   ├── 07_make_release_zip.bat  生成 Release 附件用的 610MB 压缩包
+│   ├── test_player.mjs          假玩家：验证流送端能出流（不需要浏览器）
+│   ├── test_stun.mjs            单个 STUN 连通性探测
+│   └── test_nat.mjs             NAT 类型判定（对称 / 锥形）
 ├── web/
 │   ├── play.html                自定义中文游玩页（入口）
 │   └── lib/
@@ -75,8 +78,12 @@ PSDeploy/
 └── docs/
     ├── 崩溃修复报告.md
     ├── 重新打包命令.txt
-    └── GPU云主机选型.md
+    ├── GPU云主机选型.md
+    └── GitHub发布说明.md         能不能传 GitHub / 传什么 / 怎么传
 ```
+
+> 想把这套东西备份或分享到 GitHub？看 `docs/GitHub发布说明.md`。
+> 一句话：**代码可以进仓库（仅 844 KB），610 MB 游戏包必须走 Releases（单文件上限 2 GB）。**
 
 ---
 
@@ -237,6 +244,15 @@ A：见 `docs/崩溃修复报告.md`：`BH_BP_Player` 里的 `ActorSequenceCompo
 
 **Q：画面卡顿 / 延迟大**
 A：检查上行带宽（建议 ≥ 20 Mbps）；降低 `-ResX/-ResY` 与 `QualityScale`，或部署 TURN 中继。
+
+**Q：能不能上传到 GitHub，让别人点链接就玩？**
+A：分两件事。
+**传代码可以**：`PSDeploy/` 去掉 `node_modules` 只有 **844 KB**，正常 push 即可。
+**点链接就玩不行**：GitHub Pages 只能托管静态文件，浏览器无法执行
+`DMC_V2-Win64-Shipping.exe`；而且仓库单文件硬限制 100 MB，
+本包的 `.ucas` 有 378 MB、`.exe` 有 148 MB，**提交不进去**。
+610 MB 整包只能作为 **Release 附件**（上限 2 GB），别人下载后在本机跑。
+详见 `docs/GitHub发布说明.md`。
 
 **Q：提示"前端库未加载"**
 A：`web\lib\frontend.js` 缺失，重跑 `01_setup_infra.bat`。
